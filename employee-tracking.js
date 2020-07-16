@@ -774,3 +774,135 @@ function deleteRole(){
         })
     });
 }
+
+// Delete Department
+function deleteDept(){
+
+    // department array
+    let deptArr = [];
+
+    // Create connection using promise-sql
+    promisemysql.createConnection(connectionProperties
+    ).then((conn) => {
+
+        // query all departments
+        return conn.query("SELECT id, name FROM department");
+    }).then((depts) => {
+
+        // add all departments to array
+        for (i=0; i < depts.length; i++){
+            deptArr.push(depts[i].name);
+        }
+
+        inquirer.prompt([{
+
+            // confirm to continue to select department to delete
+            name: "continueDelete",
+            type: "list",
+            message: "*** WARNING *** Deleting a department will delete all roles and employees associated with the department. Do you want to continue?",
+            choices: ["NO", "YES"]
+        }]).then((answer) => {
+
+            // if not, go back to main menu
+            if (answer.continueDelete === "NO") {
+                mainMenu();
+            }
+
+        }).then(() => {
+
+            inquirer.prompt([{
+
+                // prompt user to select department
+                name: "dept",
+                type: "list",
+                message: "Which department would you like to delete?",
+                choices: deptArr
+            }, {
+
+                // confirm with user to delete
+                name: "confirmDelete",
+                type: "Input",
+                message: "Type the department name EXACTLY to confirm deletion of the department: "
+
+            }]).then((answer) => {
+
+                if(answer.confirmDelete === answer.dept){
+
+                    // if confirmed, get department id
+                    let deptID;
+                    for (i=0; i < depts.length; i++){
+                        if (answer.dept == depts[i].name){
+                            deptID = depts[i].id;
+                        }
+                    }
+                    
+                    // delete department
+                    connection.query(`DELETE FROM department WHERE id=${deptID};`, (err, res) => {
+                        if(err) return err;
+
+                        // confirm department has been deleted
+                        console.log(`\n DEPARTMENT '${answer.dept}' DELETED...\n `);
+
+                        // back to main menu
+                        mainMenu();
+                    });
+                } 
+                else {
+
+                    // do not delete department if not confirmed and go back to main menu
+                    console.log(`\n DEPARTMENT '${answer.dept}' NOT DELETED...\n `);
+
+                    //back to main menu
+                    mainMenu();
+                }
+                
+            });
+        })
+    });
+}
+
+// View Department Budget
+function viewDeptBudget(){
+
+    // Create connection using promise-sql
+    promisemysql.createConnection(connectionProperties)
+    .then((conn) => {
+        return  Promise.all([
+
+            // query all departments and salaries
+            conn.query("SELECT department.name AS department, role.salary FROM employee e LEFT JOIN employee m ON e.manager_id = m.id INNER JOIN role ON e.role_id = role.id INNER JOIN department ON role.department_id = department.id ORDER BY department ASC"),
+            conn.query('SELECT name FROM department ORDER BY name ASC')
+        ]);
+    }).then(([deptSalaies, departments]) => {
+        
+        let deptBudgetArr =[];
+        let department;
+
+        for (d=0; d < departments.length; d++){
+            let departmentBudget = 0;
+
+            // add all salaries together
+            for (i=0; i < deptSalaies.length; i++){
+                if (departments[d].name == deptSalaies[i].department){
+                    departmentBudget += deptSalaies[i].salary;
+                }
+            }
+
+            // create new property with budgets
+            department = {
+                Department: departments[d].name,
+                Budget: departmentBudget
+            }
+
+            // add to array
+            deptBudgetArr.push(department);
+        }
+        console.log("\n");
+
+        // display departments budgets using console.table
+        console.table(deptBudgetArr);
+
+        // back to main menu
+        mainMenu();
+    });
+}
