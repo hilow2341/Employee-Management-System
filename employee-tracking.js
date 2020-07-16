@@ -8,7 +8,7 @@ const connectionProperties = {
     host: "localhost",
     port: 3306,
     user: "root",
-    password: "blank",
+    password: "2341",
     database: "employees_DB"
 }
 
